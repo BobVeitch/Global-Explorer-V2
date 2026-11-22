@@ -4096,9 +4096,7 @@ for (const gpx of savedGpx) {
           if (savedGpx.length > 0) {
             AppState.update({ gpxItems: savedGpx });
             MapEngine.renderGpxTracks(savedGpx);
-            .chip[aria-pressed="true"],
-
-          }
+                      }
           const savedPois = await StorageEngine.idbGetAll('pois');
           if (savedPois.length > 0) {
             AppState.update({ pois: savedPois });
