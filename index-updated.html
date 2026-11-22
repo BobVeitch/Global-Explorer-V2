@@ -392,11 +392,18 @@
       font-weight: 600;
       cursor: pointer;
     }
-    .chip.active {
-      background: var(--accent-soft);
-      color: var(--accent);
-      border-color: var(--accent);
-    }
+      .chip.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+}
+
+.chip:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
 
     .list-item {
       background: var(--bg-input);
@@ -589,7 +596,7 @@ zoomPoiLimits: {
       w3wConvertToCoords: 'https://api.what3words.com/v3/convert-to-coordinates',
       aiProviders: ['Grok', 'Copilot', 'Claude', 'ChatGPT', 'Gemini', 'DeepSeek'],
       explorerScales: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-      travelModes: ['walking', 'cycling', 'mtb', /*'horse'*/ 'driving' 'motorhome'],
+      travelModes: ['walking', 'cycling', 'mtb', /*'horse'*/ 'driving', 'motorhome'],
       highlightCategories: [
         'Must See Highlights',
         'Hidden Gems',
@@ -2171,7 +2178,7 @@ ${trkPtXml}
       }
 
       function mapProfileToOsrm(mode) {
-        if (mode === 'walking' |/* | mode === 'horse')*/  return 'foot';
+        if (mode === 'walking') return 'foot';
         if (mode === 'cycling' || mode === 'mtb') return 'bicycle';
         return 'driving';
       }
@@ -4090,18 +4097,7 @@ for (const gpx of savedGpx) {
             AppState.update({ gpxItems: savedGpx });
             MapEngine.renderGpxTracks(savedGpx);
             .chip[aria-pressed="true"],
-.chip.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-  border: 2px solid var(--accent);
-  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
-}
 
-.chip:focus-visible,
-.icon-btn:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 2px;
-}
           }
           const savedPois = await StorageEngine.idbGetAll('pois');
           if (savedPois.length > 0) {
