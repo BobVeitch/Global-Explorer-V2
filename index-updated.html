@@ -589,7 +589,7 @@ zoomPoiLimits: {
       w3wConvertToCoords: 'https://api.what3words.com/v3/convert-to-coordinates',
       aiProviders: ['Grok', 'Copilot', 'Claude', 'ChatGPT', 'Gemini', 'DeepSeek'],
       explorerScales: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-      travelModes: ['walking', 'cycling', 'mtb', 'horse', 'driving', 'motorhome'],
+      travelModes: ['walking', 'cycling', 'mtb', /*'horse'*/ 'driving' 'motorhome'],
       highlightCategories: [
         'Must See Highlights',
         'Hidden Gems',
@@ -1165,7 +1165,7 @@ zoomPoiLimits: {
           walking: L.layerGroup().addTo(map),
           cycling: L.layerGroup().addTo(map),
           mtb: L.layerGroup(),
-          horse: L.layerGroup(),
+          /* horse: L.layerGroup(), */
           motorhome: L.layerGroup().addTo(map),
           parks: L.layerGroup().addTo(map),
           scenic: L.layerGroup().addTo(map)
@@ -1219,20 +1219,20 @@ zoomPoiLimits: {
         ], { color: '#f97316', weight: 3, dashArray: '4,4' }).bindPopup('Dunkeld / Tay Trails (MTB)');
         overlayGroups.mtb.addLayer(mtbSample);
 
-        const horseSample = L.polyline([
+        /*const horseSample = L.polyline([
           [56.600, -3.850], [56.660, -3.790]
         ], { color: '#c084fc', weight: 3, dashArray: '2,6' }).bindPopup('Highland Bridleway Sector (Horse Riding)');
-        overlayGroups.horse.addLayer(horseSample);
+        overlayGroups.horse.addLayer(horseSample); */
 
         const scenicSample = L.polyline([
           [56.185, -4.875], [56.250, -4.770], [56.395, -4.830]
         ], { color: '#facc15', weight: 4, opacity: 0.85 }).bindPopup('Arrochar & Glen Coe Scenic Drive');
         overlayGroups.scenic.addLayer(scenicSample);
 
-        const parkSample = L.polygon([
+        /* const parkSample = L.polygon([
           [56.02, -5.05], [56.02, -4.35], [56.46, -4.35], [56.46, -5.05]
         ], { color: '#10b981', weight: 2, fillOpacity: 0.08 }).bindPopup('Loch Lomond & The Trossachs National Park Boundary');
-        overlayGroups.parks.addLayer(parkSample);
+        overlayGroups.parks.addLayer(parkSample); */
       }
 
       function setBaseMap(mode) {
@@ -2171,7 +2171,7 @@ ${trkPtXml}
       }
 
       function mapProfileToOsrm(mode) {
-        if (mode === 'walking' || mode === 'horse') return 'foot';
+        if (mode === 'walking' |/* | mode === 'horse')*/  return 'foot';
         if (mode === 'cycling' || mode === 'mtb') return 'bicycle';
         return 'driving';
       }
@@ -2348,7 +2348,7 @@ ${trkPtXml}
           walking: walkingScore,
           cycling: cyclingScore,
           mtb: cyclingScore,
-          horse: difficultyScore,
+          /* horse: difficultyScore, */
           driving: distanceScore,
           motorhome: motorhomeScore
         };
@@ -3126,8 +3126,13 @@ for (const gpx of savedGpx) {
           ['walking', 'Walking'],
           ['cycling', 'Cycling'],
           ['mtb', 'MTB'],
-          ['horse', 'Horse Riding'],
+          /* ['horse', 'Horse Riding'], */
           ['motorhome', 'Motorhome'],
+          ['extreme', 'Extreme Sports'],
+['wild-swim', 'Wild Swimming'],
+['offroad', 'Off-Road Driving'],
+['climbing', 'Climbing'],
+['hiking', 'Hiking & Trails'],
           ['parks', 'National Parks'],
           ['scenic', 'Scenic Routes']
         ];
@@ -4084,6 +4089,19 @@ for (const gpx of savedGpx) {
           if (savedGpx.length > 0) {
             AppState.update({ gpxItems: savedGpx });
             MapEngine.renderGpxTracks(savedGpx);
+            .chip[aria-pressed="true"],
+.chip.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.12);
+}
+
+.chip:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
           }
           const savedPois = await StorageEngine.idbGetAll('pois');
           if (savedPois.length > 0) {
