@@ -932,13 +932,14 @@ zoomPoiLimits: {
         collections: [],
         offlineAreas: [],
         navigation: {
-          active: false,
-          mode: 'motorhome',
-          currentStepIndex: 0,
-          offRouteMeters: 0,
-          recordedTrack: [],
-          lastAnnouncedKey: ''
-        },
+  active: false,
+  mode: 'motorhome',
+  currentStepIndex: 0,
+  offRouteMeters: 0,
+  recordedTrack: [],
+  savedTracks: [],
+  lastAnnouncedKey: ''
+},
         lastGeneratedPrompt: ''
       };
 
@@ -2668,6 +2669,51 @@ ${trkPtXml}
         }
       }
 
+async function clearNavigationArtifacts(options = {}) {
+  const { clearRoute = false, clearWaypoints = false, clearSavedTracks = false } = options;
+
+  if (watchId !== null && 'geolocation' in navigator) {
+    navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+
+  const st = AppState.getState();
+
+  AppState.update({
+    navigation: {
+      ...st.navigation,
+      active: false,
+      currentStepIndex: 0,
+      offRouteMeters: 0,
+      recordedTrack: [],
+      lastAnnouncedKey: ''
+    }
+  }, 'nav:cleared');
+
+  if (clearRoute || clearWaypoints) {
+    const route = {
+      ...st.route,
+      geometry: [],
+      instructions: [],
+      distanceMeters: 0,
+      durationSeconds: 0,
+      waypoints: clearWaypoints ? [] : st.route.waypoints,
+      undoStack: [],
+      redoStack: []
+    };
+
+    AppState.update({ route }, 'route:cleared');
+    MapEngine.renderRoute(route);
+  }
+
+  if (clearSavedTracks) {
+    await StorageEngine.idbBulkPut('gpx', []);
+    await StorageEngine.idbDelete('navigationData', 'active_route');
+    AppState.update({ gpxItems: [] }, 'gpx:cleared');
+    MapEngine.renderGpxTracks([]);
+  }
+}
+
       async function stopNavigationAndSaveRecording() {
         if (watchId !== null && 'geolocation' in navigator) {
           navigator.geolocation.clearWatch(watchId);
@@ -2686,7 +2732,7 @@ ${trkPtXml}
         return savedGpx;
       }
 
-      return { startNavigation, handlePositionUpdate, stopNavigationAndSaveRecording, speak };
+      return { clearNavigationArtifacts, startNavigation, handlePositionUpdate, stopNavigationAndSaveRecording, speak };
     })();
 
     /* =========================================================================
@@ -3441,10 +3487,13 @@ ${trkPtXml}
 
           <div class="card">
             <div class="row">
-              <button type="button" class="icon-btn primary" data-action="start-nav">▶ Start Navigation</button>
-              <button type="button" class="icon-btn danger" data-action="stop-nav">⏹ Stop & Save Track</button>
-              <button type="button" class="icon-btn" data-action="sim-gps-step">📍 Simulate Next GPS</button>
-            </div>
+  <button type="button" class="icon-btn primary" data-action="start-nav">▶ Start Navigation</button>
+  <button type="button" class="icon-btn" data-action="stop-nav">⏹ Stop & Save Track</button>
+  <button type="button" class="icon-btn" data-action="clear-current-nav">🧹 Clear Map & Navigation</button>
+  <button type="button" class="icon-btn danger" data-action="clear-route-waypoints">Clear Route & Waypoints</button>
+  <button type="button" class="icon-btn danger" data-action="delete-saved-tracks">Delete Saved Tracks</button>
+  <button type="button" class="icon-btn" data-action="sim-gps-step">📍 Simulate Next GPS</button>
+</div>
           </div>
 
           <div class="card">
@@ -3870,21 +3919,32 @@ ${trkPtXml}
           else if (action === 'export-txt') ExportEngine.exportTxt();
           else if (action === 'export-route-report') ExportEngine.exportRouteReport();
           else if (action === 'export-trip-report') ExportEngine.exportTripReport();
-          else if (action === 'start-nav') {
-            NavigationEngine.startNavigation(st.travelMode);
-            UIRenderer.renderWorkspace();
-          } else if (action === 'stop-nav') {
-            const rec = await NavigationEngine.stopNavigationAndSaveRecording();
-            if (rec) showToast(`Saved recorded GPX: ${rec.name}`, 'success');
-            UIRenderer.renderWorkspace();
-          } else if (action === 'sim-gps-step') {
-            const steps = st.route.instructions || [];
-            const nextIdx = Math.min(st.navigation.currentStepIndex + 1, Math.max(0, steps.length - 1));
-            const target = steps[nextIdx] || st.route.waypoints[0];
-            if (target) {
-              await NavigationEngine.handlePositionUpdate(target.lat, target.lon, 10);
-              MapEngine.setView(target.lat, target.lon, 14);
-              UIRenderer.renderWorkspace();
+          } else if (action === 'clear-current-nav') {
+  await NavigationEngine.clearNavigationArtifacts({
+    clearRoute: true,
+    clearWaypoints: false,
+    clearSavedTracks: false
+  });
+  showToast('Map navigation and active route cleared', 'success');
+  UIRenderer.renderWorkspace();
+} else if (action === 'clear-route-waypoints') {
+  if (!confirm('Clear the active route and every waypoint? This cannot be undone.')) return;
+  await NavigationEngine.clearNavigationArtifacts({
+    clearRoute: true,
+    clearWaypoints: true,
+    clearSavedTracks: false
+  });
+  showToast('Route and all waypoints cleared', 'success');
+  UIRenderer.renderWorkspace();
+} else if (action === 'delete-saved-tracks') {
+  if (!confirm('Delete all saved GPX navigation tracks and the active route snapshot?')) return;
+  await NavigationEngine.clearNavigationArtifacts({
+    clearRoute: false,
+    clearWaypoints: false,
+    clearSavedTracks: true
+  });
+  showToast('Saved navigation tracks deleted', 'success');
+  UIRenderer.renderWorkspace();
             }
           } else if (action === 'download-offline-area') {
             const nameVal = document.getElementById('offlineAreaName')?.value;
