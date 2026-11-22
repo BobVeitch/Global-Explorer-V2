@@ -3147,6 +3147,7 @@ for (const gpx of savedGpx) {
           ['picnic_site', 'Picnic Sites'],
           ['restaurant', 'Restaurants'],
           ['cafe', 'Cafés']
+        ];
 
 const layerChips = layersList.map(([key, label]) => {
   const selected = st.selectedLayers.includes(key);
@@ -3154,8 +3155,8 @@ const layerChips = layersList.map(([key, label]) => {
     <button
       type="button"
       class="chip ${selected ? 'active' : ''}"
-      data-action="set-layer"
-      data-key="${key}"
+      data-action="toggle-layer"
+      data-layer="${key}"
       aria-pressed="${selected}"
     >
       ${label}
@@ -3163,14 +3164,8 @@ const layerChips = layersList.map(([key, label]) => {
   `;
 }).join('');
 
-        ];
-
         container.innerHTML = `
-          <div class="card">
-            <div class="card-header">
-              <span>🌐 Explorer Scale: ${st.explorerScaleKm}km</span>
-              <span class="muted">Zoom ${scaleCfg.zoom} · Max ${scaleCfg.poiLimit} POIs</span>
-            </div>
+         
             <div class="chip-group">
               ${APP_CONFIG.explorerScales.map((s) => `
                 <button type="button" class="chip ${st.explorerScaleKm === s ? 'active' : ''}" data-action="set-scale" data-scale="${s}">${s}km</button>
@@ -3944,39 +3939,74 @@ const layerChips = layersList.map(([key, label]) => {
           } else if (action === 'export-col') {
             const col = st.collections.find((c) => c.id === btn.dataset.colId);
             if (col) ExportEngine.downloadFile(`${col.name.toLowerCase().replace(/\W+/g, '_')}.json`, JSON.stringify(col, null, 2), 'application/json');
-          } else if (action === 'export-gpx') ExportEngine.exportGpx();
-          else if (action === 'export-kml') ExportEngine.exportKml();
-          else if (action === 'export-geojson') ExportEngine.exportGeoJson();
-          else if (action === 'export-txt') ExportEngine.exportTxt();
-          else if (action === 'export-route-report') ExportEngine.exportRouteReport();
-          else if (action === 'export-trip-report') ExportEngine.exportTripReport();
+                    } else if (action === 'export-gpx') {
+            ExportEngine.exportGpx();
+          } else if (action === 'export-kml') {
+            ExportEngine.exportKml();
+          } else if (action === 'export-geojson') {
+            ExportEngine.exportGeoJson();
+          } else if (action === 'export-txt') {
+            ExportEngine.exportTxt();
+          } else if (action === 'export-route-report') {
+            ExportEngine.exportRouteReport();
+          } else if (action === 'export-trip-report') {
+            ExportEngine.exportTripReport();
           } else if (action === 'clear-current-nav') {
-  await NavigationEngine.clearNavigationArtifacts({
-    clearRoute: true,
-    clearWaypoints: false,
-    clearSavedTracks: false
-  });
-  showToast('Map navigation and active route cleared', 'success');
-  UIRenderer.renderWorkspace();
-} else if (action === 'clear-route-waypoints') {
-  if (!confirm('Clear the active route and every waypoint? This cannot be undone.')) return;
-  await NavigationEngine.clearNavigationArtifacts({
-    clearRoute: true,
-    clearWaypoints: true,
-    clearSavedTracks: false
-  });
-  showToast('Route and all waypoints cleared', 'success');
-  UIRenderer.renderWorkspace();
-} else if (action === 'delete-saved-tracks') {
-  if (!confirm('Delete all saved GPX navigation tracks and the active route snapshot?')) return;
-  await NavigationEngine.clearNavigationArtifacts({
-    clearRoute: false,
-    clearWaypoints: false,
-    clearSavedTracks: true
-  });
-  showToast('Saved navigation tracks deleted', 'success');
-  UIRenderer.renderWorkspace();
-            }
+            await NavigationEngine.clearNavigationArtifacts({
+              clearRoute: true,
+              clearWaypoints: false,
+              clearSavedTracks: false
+            });
+            showToast('Map navigation and active route cleared', 'success');
+            UIRenderer.renderWorkspace();
+          } else if (action === 'clear-route-waypoints') {
+            if (!confirm('Clear the active route and every waypoint? This cannot be undone.')) return;
+            await NavigationEngine.clearNavigationArtifacts({
+              clearRoute: true,
+              clearWaypoints: true,
+              clearSavedTracks: false
+            });
+            showToast('Route and all waypoints cleared', 'success');
+            UIRenderer.renderWorkspace();
+          } else if (action === 'delete-saved-tracks') {
+            if (!confirm('Delete all saved GPX navigation tracks and the active route snapshot?')) return;
+            await NavigationEngine.clearNavigationArtifacts({
+              clearRoute: false,
+              clearWaypoints: false,
+              clearSavedTracks: true
+            });
+            showToast('Saved navigation tracks deleted', 'success');
+            UIRenderer.renderWorkspace();
+          } else if (action === 'download-offline-area') {
+            const nameVal = document.getElementById('offlineAreaName')?.value;
+            const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
+            const c = MapEngine.getCenter();
+            showToast(`Downloading offline area (${radVal}km)...`, 'info');
+            const area = await OfflineEngine.downloadOfflineArea(nameVal, c.lat, c.lon, radVal);
+            showToast(`Offline area ready (${area.cachedTiles} tiles, ${area.poisCount} POIs)`, 'success');
+            UIRenderer.renderWorkspace();
+          } else if (action === 'focus-offline') {
+
+
+
+          } else if (action === 'delete-saved-tracks') {
+            if (!confirm('Delete all saved GPX navigation tracks and the active route snapshot?')) return;
+            await NavigationEngine.clearNavigationArtifacts({
+              clearRoute: false,
+              clearWaypoints: false,
+              clearSavedTracks: true
+            });
+            showToast('Saved navigation tracks deleted', 'success');
+            UIRenderer.renderWorkspace();
+          } else if (action === 'download-offline-area') {
+            const nameVal = document.getElementById('offlineAreaName')?.value;
+            const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
+            const c = MapEngine.getCenter();
+            showToast(`Downloading offline area (${radVal}km)...`, 'info');
+            const area = await OfflineEngine.downloadOfflineArea(nameVal, c.lat, c.lon, radVal);
+            showToast(`Offline area ready (${area.cachedTiles} tiles, ${area.poisCount} POIs)`, 'success');
+            UIRenderer.renderWorkspace();
+
           } else if (action === 'download-offline-area') {
             const nameVal = document.getElementById('offlineAreaName')?.value;
             const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
