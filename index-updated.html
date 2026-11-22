@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="description" content="Global Explorer Lite V2 — OpenStreetMap travel discovery, motorhome & outdoor route planner, GPX manager, weather & elevation intelligence, and offline PWA companion." />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Global Explorer Lite V2</title>
   <link rel="manifest" href="./manifest.json" />
@@ -1129,6 +1129,7 @@ zoomPoiLimits: {
       let activeBaseLayer = null;
       let overlayGroups = {};
       let poiClusterGroup = null;
+      let poisVisible = false;
       let routeLayerGroup = null;
       let gpxLayerGroup = null;
       let userMarker = null;
@@ -1193,8 +1194,7 @@ zoomPoiLimits: {
         routeLayerGroup = L.layerGroup().addTo(map);
         gpxLayerGroup = L.layerGroup().addTo(map);
 
-        populateReferenceOverlays();
-        syncLayersFromState();
+          syncLayersFromState();
 
         map.on('moveend zoomend', GeoUtils.debounce(() => {
           const c = map.getCenter();
@@ -1203,7 +1203,7 @@ zoomPoiLimits: {
           const detected = MultilingualEngine.detectLanguagesFromBounds(map.getBounds());
           const st = AppState.getState();
           AppState.update({ selectedLanguages: { ...st.selectedLanguages, detected } }, 'languages:detected');
-          renderPois(st.pois);
+          if (poisVisible) renderPois(AppState.getState().pois);
         }, 180));
 
         map.on('click', (e) => {
@@ -1270,10 +1270,12 @@ zoomPoiLimits: {
       }
 
       function renderPois(pois) {
-        if (!map || !poiClusterGroup) return;
-        poiClusterGroup.clearLayers();
-        if (!Array.isArray(pois) || pois.length === 0) return;
+  if (!map || !poiClusterGroup) return;
 
+  poiClusterGroup.clearLayers();
+  poisVisible = Array.isArray(pois) && pois.length > 0;
+  if (!poisVisible) return;
+      
         const bounds = map.getBounds().pad(0.15);
         const scaleCfg = ExplorerScaleEngine.getScaleConfig(AppState.getState().explorerScaleKm);
         const limit = Math.min(APP_CONFIG.maxRenderedMarkers, scaleCfg.poiLimit);
@@ -1345,6 +1347,23 @@ zoomPoiLimits: {
       }
 
       function renderGpxTracks(gpxItems) {
+
+function clearVisibleLayers() {
+        if (!map) return;
+        poiClusterGroup?.clearLayers();
+        routeLayerGroup?.clearLayers();
+        gpxLayerGroup?.clearLayers();
+
+        if (userMarker) {
+          map.removeLayer(userMarker);
+          userMarker = null;
+        }
+        if (userAccuracyCircle) {
+          map.removeLayer(userAccuracyCircle);
+          userAccuracyCircle = null;
+        }
+      }
+
         if (!map || !gpxLayerGroup) return;
         gpxLayerGroup.clearLayers();
         for (const item of (gpxItems || [])) {
@@ -1408,20 +1427,21 @@ function getCenter() {
         return Boolean(map);
       }
 
-     return {
-  init,
-  setBaseMap,
-  syncLayersFromState,
-  renderPois,
-  renderRoute,
-  renderGpxTracks,
-  setUserLocation,
-  setView,
-  setZoom,
-  getZoom,
-  getCenter,
-  isReady
-};
+      return {
+        init,
+        setBaseMap,
+        syncLayersFromState,
+        renderPois,
+        renderRoute,
+        renderGpxTracks,
+        clearVisibleLayers,
+        setUserLocation,
+        setView,
+        setZoom,
+        getZoom,
+        getCenter,
+        isReady
+      };
     })();
 
     /* =========================================================================
@@ -2713,13 +2733,12 @@ async function clearNavigationArtifacts(options = {}) {
 
   if (clearSavedTracks) {
     const savedGpx = await StorageEngine.idbGetAll('gpx');
-for (const gpx of savedGpx) {
-  await StorageEngine.idbDelete('gpx', gpx.id);
-}
-    await StorageEngine.idbDelete('navigationData', 'active_route');
+    await Promise.all(savedGpx.map((gpx) => StorageEngine.idbDelete('gpx', gpx.id)));
     AppState.update({ gpxItems: [] }, 'gpx:cleared');
     MapEngine.renderGpxTracks([]);
   }
+
+    await StorageEngine.idbDelete('navigationData', 'active_route');
 }
 
       async function stopNavigationAndSaveRecording() {
@@ -3977,18 +3996,7 @@ const layerChips = layersList.map(([key, label]) => {
             });
             showToast('Saved navigation tracks deleted', 'success');
             UIRenderer.renderWorkspace();
-          } else if (action === 'download-offline-area') {
-            const nameVal = document.getElementById('offlineAreaName')?.value;
-            const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
-            const c = MapEngine.getCenter();
-            showToast(`Downloading offline area (${radVal}km)...`, 'info');
-            const area = await OfflineEngine.downloadOfflineArea(nameVal, c.lat, c.lon, radVal);
-            showToast(`Offline area ready (${area.cachedTiles} tiles, ${area.poisCount} POIs)`, 'success');
-            UIRenderer.renderWorkspace();
-          } else if (action === 'focus-offline') {
-
-
-
+         
           } else if (action === 'delete-saved-tracks') {
             if (!confirm('Delete all saved GPX navigation tracks and the active route snapshot?')) return;
             await NavigationEngine.clearNavigationArtifacts({
@@ -3998,15 +4006,7 @@ const layerChips = layersList.map(([key, label]) => {
             });
             showToast('Saved navigation tracks deleted', 'success');
             UIRenderer.renderWorkspace();
-          } else if (action === 'download-offline-area') {
-            const nameVal = document.getElementById('offlineAreaName')?.value;
-            const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
-            const c = MapEngine.getCenter();
-            showToast(`Downloading offline area (${radVal}km)...`, 'info');
-            const area = await OfflineEngine.downloadOfflineArea(nameVal, c.lat, c.lon, radVal);
-            showToast(`Offline area ready (${area.cachedTiles} tiles, ${area.poisCount} POIs)`, 'success');
-            UIRenderer.renderWorkspace();
-
+         
           } else if (action === 'download-offline-area') {
             const nameVal = document.getElementById('offlineAreaName')?.value;
             const radVal = Number(document.getElementById('offlineAreaRadius')?.value || 10);
@@ -4132,7 +4132,7 @@ const layerChips = layersList.map(([key, label]) => {
 
       async function boot() {
         MapEngine.init('map');
-        bindEvents();
+          bindEvents();
 
         try {
           await StorageEngine.openDb();
@@ -4141,7 +4141,7 @@ const layerChips = layersList.map(([key, label]) => {
           const savedGpx = await StorageEngine.idbGetAll('gpx');
           if (savedGpx.length > 0) {
             AppState.update({ gpxItems: savedGpx });
-            MapEngine.renderGpxTracks(savedGpx);
+        
                       }
           const savedPois = await StorageEngine.idbGetAll('pois');
           if (savedPois.length > 0) {
