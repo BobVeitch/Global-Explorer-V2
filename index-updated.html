@@ -596,7 +596,7 @@ zoomPoiLimits: {
       w3wConvertToCoords: 'https://api.what3words.com/v3/convert-to-coordinates',
       aiProviders: ['Grok', 'Copilot', 'Claude', 'ChatGPT', 'Gemini', 'DeepSeek'],
       explorerScales: [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000],
-      travelModes: ['walking', 'cycling', 'mtb', /*'horse'*/ 'driving', 'motorhome'],
+      travelModes: ['walking', 'cycling', 'mtb','driving', 'motorhome'],
       highlightCategories: [
         'Must See Highlights',
         'Hidden Gems',
@@ -1172,7 +1172,6 @@ zoomPoiLimits: {
           walking: L.layerGroup().addTo(map),
           cycling: L.layerGroup().addTo(map),
           mtb: L.layerGroup(),
-          /* horse: L.layerGroup(), */
           motorhome: L.layerGroup().addTo(map),
           parks: L.layerGroup().addTo(map),
           scenic: L.layerGroup().addTo(map)
@@ -1225,11 +1224,6 @@ zoomPoiLimits: {
           [56.402, -3.192], [56.380, -3.140]
         ], { color: '#f97316', weight: 3, dashArray: '4,4' }).bindPopup('Dunkeld / Tay Trails (MTB)');
         overlayGroups.mtb.addLayer(mtbSample);
-
-        /*const horseSample = L.polyline([
-          [56.600, -3.850], [56.660, -3.790]
-        ], { color: '#c084fc', weight: 3, dashArray: '2,6' }).bindPopup('Highland Bridleway Sector (Horse Riding)');
-        overlayGroups.horse.addLayer(horseSample); */
 
         const scenicSample = L.polyline([
           [56.185, -4.875], [56.250, -4.770], [56.395, -4.830]
@@ -2355,7 +2349,6 @@ ${trkPtXml}
           walking: walkingScore,
           cycling: cyclingScore,
           mtb: cyclingScore,
-          /* horse: difficultyScore, */
           driving: distanceScore,
           motorhome: motorhomeScore
         };
@@ -3133,7 +3126,6 @@ for (const gpx of savedGpx) {
           ['walking', 'Walking'],
           ['cycling', 'Cycling'],
           ['mtb', 'MTB'],
-          /* ['horse', 'Horse Riding'], */
           ['motorhome', 'Motorhome'],
           ['extreme', 'Extreme Sports'],
 ['wild-swim', 'Wild Swimming'],
