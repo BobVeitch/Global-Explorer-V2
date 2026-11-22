@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="theme-color" content="#0f172a" />
   <meta name="description" content="Global Explorer Lite V2 — OpenStreetMap travel discovery, motorhome & outdoor route planner, GPX manager, weather & elevation intelligence, and offline PWA companion." />
   <meta name="mobile-web-app-capable" content="yes">
@@ -684,34 +684,93 @@ zoomPoiLimits: {
         return minDist;
       }
 
-      async function fetchWithTimeout(url, options = {}, timeoutMs = APP_CONFIG.requestTimeoutMs) {
+           async function fetchWithTimeout(url, options = {}, timeoutMs = APP_CONFIG.requestTimeoutMs) {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
+        const callerSignal = options.signal;
+
+        const abortFromCaller = () => controller.abort(callerSignal?.reason);
+        if (callerSignal?.aborted) {
+          controller.abort(callerSignal.reason);
+        } else {
+          callerSignal?.addEventListener('abort', abortFromCaller, { once: true });
+        }
+
+        const timer = setTimeout(
+          () => controller.abort(new DOMException('Request timed out', 'TimeoutError')),
+          timeoutMs
+        );
+
         try {
           return await fetch(url, { ...options, signal: controller.signal });
         } finally {
           clearTimeout(timer);
+          callerSignal?.removeEventListener('abort', abortFromCaller);
         }
       }
 
-      async function fetchWithRetry(url, options = {}, retries = APP_CONFIG.retryAttempts, timeoutMs = APP_CONFIG.requestTimeoutMs) {
+       async function fetchWithRetry(url, options = {}, retries = APP_CONFIG.retryAttempts, timeoutMs = APP_CONFIG.requestTimeoutMs) {
         let lastErr;
+
         for (let attempt = 0; attempt <= retries; attempt++) {
+          if (options.signal?.aborted) {
+            throw options.signal.reason || new DOMException('Request cancelled', 'AbortError');
+          }
+
           try {
-            const res = await fetchWithTimeout(url, options, timeoutMs);
-            if (!res.ok && res.status >= 500 && attempt < retries) {
-              throw new Error(`HTTP ${res.status}`);
+            const response = await fetchWithTimeout(url, options, timeoutMs);
+            const shouldRetry = response.status === 429 || response.status >= 500;
+
+            if (!shouldRetry || attempt >= retries) {
+              return response;
             }
-            return res;
+
+            let delayMs = 350 * (2 ** attempt) + Math.random() * 150;
+
+            if (response.status === 429) {
+              const retryAfter = response.headers.get('Retry-After');
+              if (retryAfter) {
+                const seconds = Number(retryAfter);
+                const retryAt = Date.parse(retryAfter);
+                const serverDelayMs = Number.isFinite(seconds)
+                  ? seconds * 1000
+                  : Number.isNaN(retryAt)
+                    ? NaN
+                    : retryAt - Date.now();
+
+                if (Number.isFinite(serverDelayMs)) {
+                  delayMs = Math.max(0, serverDelayMs);
+                }
+              }
+            }
+
+            await new Promise((resolve, reject) => {
+              const timer = setTimeout(resolve, Math.min(delayMs, 30_000));
+
+              options.signal?.addEventListener('abort', () => {
+                clearTimeout(timer);
+                reject(options.signal.reason || new DOMException('Request cancelled', 'AbortError'));
+              }, { once: true });
+            });
           } catch (err) {
             lastErr = err;
-            if (attempt < retries) {
-              await new Promise((r) => setTimeout(r, 350 * (attempt + 1)));
+
+            // Do not retry an intentional caller cancellation.
+            if (options.signal?.aborted || err?.name === 'AbortError') {
+              throw err;
             }
+
+            // TimeoutError and network errors can be retried.
+            if (attempt >= retries) {
+              throw err;
+            }
+
+            await new Promise((resolve) => setTimeout(resolve, 350 * (2 ** attempt)));
           }
         }
+
         throw lastErr || new Error('Network request failed');
       }
+      
 
       function debounce(fn, wait = 250) {
         let t;
