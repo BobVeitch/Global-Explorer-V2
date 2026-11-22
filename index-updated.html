@@ -2707,7 +2707,10 @@ async function clearNavigationArtifacts(options = {}) {
   }
 
   if (clearSavedTracks) {
-    await StorageEngine.idbBulkPut('gpx', []);
+    const savedGpx = await StorageEngine.idbGetAll('gpx');
+for (const gpx of savedGpx) {
+  await StorageEngine.idbDelete('gpx', gpx.id);
+}
     await StorageEngine.idbDelete('navigationData', 'active_route');
     AppState.update({ gpxItems: [] }, 'gpx:cleared');
     MapEngine.renderGpxTracks([]);
