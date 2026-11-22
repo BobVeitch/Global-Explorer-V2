@@ -3147,6 +3147,22 @@ for (const gpx of savedGpx) {
           ['picnic_site', 'Picnic Sites'],
           ['restaurant', 'Restaurants'],
           ['cafe', 'Cafés']
+
+const layerChips = layersList.map(([key, label]) => {
+  const selected = st.selectedLayers.includes(key);
+  return `
+    <button
+      type="button"
+      class="chip ${selected ? 'active' : ''}"
+      data-action="set-layer"
+      data-key="${key}"
+      aria-pressed="${selected}"
+    >
+      ${label}
+    </button>
+  `;
+}).join('');
+
         ];
 
         container.innerHTML = `
@@ -3187,11 +3203,14 @@ for (const gpx of savedGpx) {
 
           <div class="card">
             <div class="card-header"><span>🗺️ Map Layers</span></div>
-            <div class="chip-group">
-              ${layersList.map(([key, label]) => `
-                <button type="button" class="chip ${st.selectedLayers.includes(key) ? 'active' : ''}" data-action="toggle-layer" data-layer="${key}">${label}</button>
-              `).join('')}
-            </div>
+         <div class="chip-group">
+  ${APP_CONFIG.explorerScales.map((s) => `
+    <button type="button" class="chip ${st.explorerScaleKm === s ? 'active' : ''}" data-action="set-scale">
+      ${s} km
+    </button>
+  `).join('')}
+  ${layerChips}
+</div>
           </div>
 
           <div class="card">
